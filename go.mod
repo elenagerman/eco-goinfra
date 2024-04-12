@@ -1,6 +1,8 @@
 module github.com/openshift-kni/eco-goinfra
 
-go 1.20
+go 1.21
+
+toolchain go1.21.1
 
 require (
 	github.com/NVIDIA/gpu-operator v1.8.3-0.20240306022107-5fcd98c024cf
