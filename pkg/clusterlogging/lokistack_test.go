@@ -2,17 +2,26 @@ package clusterlogging
 
 import (
 	"fmt"
+	corev1 "k8s.io/api/core/v1"
+	"testing"
+
 	lokiv1 "github.com/grafana/loki/operator/apis/loki/v1"
 	"github.com/openshift-kni/eco-goinfra/pkg/clients"
 	"github.com/stretchr/testify/assert"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
-	"testing"
 )
 
 var (
 	defaultLokiStackName      = "lokistack-test"
 	defaultLokiStackNamespace = "lokistack-space"
+	lokiComponent             = lokiv1.LokiComponentSpec{
+		NodeSelector: map[string]string{"node-role.kubernetes.io/infra": ""},
+		Tolerations: []corev1.Toleration{{
+			Key:      "node-role.kubernetes.io/infra",
+			Operator: "Exists",
+		}},
+	}
 )
 
 func TestPullLokiStack(t *testing.T) {
@@ -301,34 +310,28 @@ func TestLokiStackUpdate(t *testing.T) {
 
 func TestLokiStackWithSize(t *testing.T) {
 	testCases := []struct {
-		testSize          lokiv1.LokiStackSizeType
-		expectedError     bool
-		expectedErrorText string
+		testSize      lokiv1.LokiStackSizeType
+		expectedError string
 	}{
 		{
-			testSize:          lokiv1.SizeOneXDemo,
-			expectedError:     false,
-			expectedErrorText: "",
+			testSize:      lokiv1.SizeOneXDemo,
+			expectedError: "",
 		},
 		{
-			testSize:          lokiv1.SizeOneXSmall,
-			expectedError:     false,
-			expectedErrorText: "",
+			testSize:      lokiv1.SizeOneXSmall,
+			expectedError: "",
 		},
 		{
-			testSize:          lokiv1.SizeOneXMedium,
-			expectedError:     false,
-			expectedErrorText: "",
+			testSize:      lokiv1.SizeOneXMedium,
+			expectedError: "",
 		},
 		{
-			testSize:          lokiv1.SizeOneXExtraSmall,
-			expectedError:     false,
-			expectedErrorText: "",
+			testSize:      lokiv1.SizeOneXExtraSmall,
+			expectedError: "",
 		},
 		{
-			testSize:          "",
-			expectedError:     false,
-			expectedErrorText: "'size' argument cannot be empty",
+			testSize:      "",
+			expectedError: "'size' argument cannot be empty",
 		},
 	}
 
@@ -336,12 +339,9 @@ func TestLokiStackWithSize(t *testing.T) {
 		testBuilder := buildValidLokiStackBuilder(buildLokiStackClientWithDummyObject())
 
 		result := testBuilder.WithSize(testCase.testSize)
+		assert.Equal(t, testCase.expectedError, result.errorMsg)
 
-		if testCase.expectedError {
-			if testCase.expectedErrorText != "" {
-				assert.Equal(t, testCase.expectedErrorText, result.errorMsg)
-			}
-		} else {
+		if testCase.expectedError == "" {
 			assert.NotNil(t, result)
 			assert.Equal(t, testCase.testSize, result.Definition.Spec.Size)
 		}
@@ -350,9 +350,8 @@ func TestLokiStackWithSize(t *testing.T) {
 
 func TestLokiStackWithStorage(t *testing.T) {
 	testCases := []struct {
-		testStorage       lokiv1.ObjectStorageSpec
-		expectedError     bool
-		expectedErrorText string
+		testStorage   lokiv1.ObjectStorageSpec
+		expectedError string
 	}{
 		{
 			testStorage: lokiv1.ObjectStorageSpec{
@@ -361,8 +360,7 @@ func TestLokiStackWithStorage(t *testing.T) {
 					Name: "test",
 				},
 			},
-			expectedError:     false,
-			expectedErrorText: "",
+			expectedError: "",
 		},
 	}
 
@@ -370,12 +368,9 @@ func TestLokiStackWithStorage(t *testing.T) {
 		testBuilder := buildValidLokiStackBuilder(buildLokiStackClientWithDummyObject())
 
 		result := testBuilder.WithStorage(testCase.testStorage)
+		assert.Equal(t, testCase.expectedError, result.errorMsg)
 
-		if testCase.expectedError {
-			if testCase.expectedErrorText != "" {
-				assert.Equal(t, testCase.expectedErrorText, result.errorMsg)
-			}
-		} else {
+		if testCase.expectedError == "" {
 			assert.NotNil(t, result)
 			assert.Equal(t, testCase.testStorage, result.Definition.Spec.Storage)
 		}
@@ -385,18 +380,15 @@ func TestLokiStackWithStorage(t *testing.T) {
 func TestLokiStackWithStorageClassName(t *testing.T) {
 	testCases := []struct {
 		testStorageClassName string
-		expectedError        bool
-		expectedErrorText    string
+		expectedError        string
 	}{
 		{
 			testStorageClassName: "gp2",
-			expectedError:        false,
-			expectedErrorText:    "",
+			expectedError:        "",
 		},
 		{
 			testStorageClassName: "",
-			expectedError:        false,
-			expectedErrorText:    "'storageClassName' argument cannot be empty",
+			expectedError:        "'storageClassName' argument cannot be empty",
 		},
 	}
 
@@ -404,12 +396,9 @@ func TestLokiStackWithStorageClassName(t *testing.T) {
 		testBuilder := buildValidLokiStackBuilder(buildLokiStackClientWithDummyObject())
 
 		result := testBuilder.WithStorageClassName(testCase.testStorageClassName)
+		assert.Equal(t, testCase.expectedError, result.errorMsg)
 
-		if testCase.expectedError {
-			if testCase.expectedErrorText != "" {
-				assert.Equal(t, testCase.expectedErrorText, result.errorMsg)
-			}
-		} else {
+		if testCase.expectedError == "" {
 			assert.NotNil(t, result)
 			assert.Equal(t, testCase.testStorageClassName, result.Definition.Spec.StorageClassName)
 		}
@@ -418,16 +407,14 @@ func TestLokiStackWithStorageClassName(t *testing.T) {
 
 func TestLokiStackWithTenants(t *testing.T) {
 	testCases := []struct {
-		testTenants       lokiv1.TenantsSpec
-		expectedError     bool
-		expectedErrorText string
+		testTenants   lokiv1.TenantsSpec
+		expectedError string
 	}{
 		{
 			testTenants: lokiv1.TenantsSpec{
 				Mode: "openshift-logging",
 			},
-			expectedError:     false,
-			expectedErrorText: "",
+			expectedError: "",
 		},
 	}
 
@@ -435,12 +422,9 @@ func TestLokiStackWithTenants(t *testing.T) {
 		testBuilder := buildValidLokiStackBuilder(buildLokiStackClientWithDummyObject())
 
 		result := testBuilder.WithTenants(testCase.testTenants)
+		assert.Equal(t, testCase.expectedError, result.errorMsg)
 
-		if testCase.expectedError {
-			if testCase.expectedErrorText != "" {
-				assert.Equal(t, testCase.expectedErrorText, result.errorMsg)
-			}
-		} else {
+		if testCase.expectedError == "" {
 			assert.NotNil(t, result)
 			assert.Equal(t, testCase.testTenants.Mode, result.Definition.Spec.Tenants.Mode)
 		}
@@ -449,9 +433,8 @@ func TestLokiStackWithTenants(t *testing.T) {
 
 func TestLokiStackWithRules(t *testing.T) {
 	testCases := []struct {
-		testRules         lokiv1.RulesSpec
-		expectedError     bool
-		expectedErrorText string
+		testRules     lokiv1.RulesSpec
+		expectedError string
 	}{
 		{
 			testRules: lokiv1.RulesSpec{
@@ -463,15 +446,13 @@ func TestLokiStackWithRules(t *testing.T) {
 					MatchLabels: map[string]string{"openshift.io/cluster-monitoring": "true"},
 				},
 			},
-			expectedError:     false,
-			expectedErrorText: "",
+			expectedError: "",
 		},
 		{
 			testRules: lokiv1.RulesSpec{
 				Enabled: false,
 			},
-			expectedError:     false,
-			expectedErrorText: "",
+			expectedError: "",
 		},
 	}
 
@@ -479,14 +460,12 @@ func TestLokiStackWithRules(t *testing.T) {
 		testBuilder := buildValidLokiStackBuilder(buildLokiStackClientWithDummyObject())
 
 		result := testBuilder.WithRules(testCase.testRules)
+		assert.Equal(t, testCase.expectedError, result.errorMsg)
 
-		if testCase.expectedError {
-			if testCase.expectedErrorText != "" {
-				assert.Equal(t, testCase.expectedErrorText, result.errorMsg)
-			}
-		} else {
+		if testCase.expectedError == "" {
 			assert.NotNil(t, result)
 			assert.Equal(t, testCase.testRules.Enabled, result.Definition.Spec.Rules.Enabled)
+
 			if testCase.testRules.Enabled {
 				assert.Equal(t, testCase.testRules.Selector, result.Definition.Spec.Rules.Selector)
 				assert.Equal(t, testCase.testRules.NamespaceSelector, result.Definition.Spec.Rules.NamespaceSelector)
@@ -495,18 +474,144 @@ func TestLokiStackWithRules(t *testing.T) {
 	}
 }
 
+func TestLokiStackWithManagementState(t *testing.T) {
+	testCases := []struct {
+		testManagementState lokiv1.ManagementStateType
+		expectedError       string
+	}{
+		{
+			testManagementState: lokiv1.ManagementStateManaged,
+			expectedError:       "",
+		},
+		{
+			testManagementState: lokiv1.ManagementStateUnmanaged,
+			expectedError:       "",
+		},
+	}
+
+	for _, testCase := range testCases {
+		testBuilder := buildValidLokiStackBuilder(buildLokiStackClientWithDummyObject())
+
+		result := testBuilder.WithManagementState(testCase.testManagementState)
+		assert.Equal(t, testCase.expectedError, result.errorMsg)
+
+		if testCase.expectedError == "" {
+			assert.NotNil(t, result)
+			assert.Equal(t, testCase.testManagementState, result.Definition.Spec.ManagementState)
+		}
+	}
+}
+
+func TestLokiStackWithLimits(t *testing.T) {
+	testCases := []struct {
+		testLimits    lokiv1.LimitsSpec
+		expectedError string
+	}{
+		{
+			testLimits: lokiv1.LimitsSpec{
+				Global: &lokiv1.LimitsTemplateSpec{
+					Retention: &lokiv1.RetentionLimitSpec{
+						Days: 7,
+					},
+				},
+			},
+			expectedError: "",
+		},
+		{
+			testLimits: lokiv1.LimitsSpec{
+				Global: &lokiv1.LimitsTemplateSpec{
+					IngestionLimits: &lokiv1.IngestionLimitSpec{
+						MaxLabelNameLength:  270,
+						MaxLabelValueLength: 130,
+					},
+					Retention: &lokiv1.RetentionLimitSpec{
+						Days: 7,
+					},
+				},
+			},
+			expectedError: "",
+		},
+	}
+
+	for _, testCase := range testCases {
+		testBuilder := buildValidLokiStackBuilder(buildLokiStackClientWithDummyObject())
+
+		result := testBuilder.WithLimits(testCase.testLimits)
+		assert.Equal(t, testCase.expectedError, result.errorMsg)
+
+		if testCase.expectedError == "" {
+			assert.NotNil(t, result)
+			assert.Equal(t, testCase.testLimits.Global, result.Definition.Spec.Limits.Global)
+		}
+	}
+}
+
+func TestLokiStackWithTemplate(t *testing.T) {
+	testCases := []struct {
+		testTemplate  lokiv1.LokiTemplateSpec
+		expectedError string
+	}{
+		{
+			testTemplate: lokiv1.LokiTemplateSpec{
+				Compactor:     &lokiComponent,
+				Distributor:   &lokiComponent,
+				Ingester:      &lokiComponent,
+				Querier:       &lokiComponent,
+				QueryFrontend: &lokiComponent,
+				Gateway:       &lokiComponent,
+				IndexGateway:  &lokiComponent,
+				Ruler:         &lokiComponent,
+			},
+			expectedError: "",
+		},
+		{
+			testTemplate: lokiv1.LokiTemplateSpec{
+				Compactor:    &lokiComponent,
+				Ingester:     &lokiComponent,
+				Querier:      &lokiComponent,
+				Gateway:      &lokiComponent,
+				IndexGateway: &lokiComponent,
+			},
+			expectedError: "",
+		},
+		{
+			testTemplate:  lokiv1.LokiTemplateSpec{},
+			expectedError: "",
+		},
+	}
+
+	for _, testCase := range testCases {
+		testBuilder := buildValidLokiStackBuilder(buildLokiStackClientWithDummyObject())
+
+		result := testBuilder.WithTemplate(testCase.testTemplate)
+		assert.Equal(t, testCase.expectedError, result.errorMsg)
+
+		if testCase.expectedError == "" {
+			assert.NotNil(t, result)
+			assert.Equal(t, testCase.testTemplate.Compactor, result.Definition.Spec.Template.Compactor)
+			assert.Equal(t, testCase.testTemplate.Distributor, result.Definition.Spec.Template.Distributor)
+			assert.Equal(t, testCase.testTemplate.Ingester, result.Definition.Spec.Template.Ingester)
+			assert.Equal(t, testCase.testTemplate.Querier, result.Definition.Spec.Template.Querier)
+			assert.Equal(t, testCase.testTemplate.QueryFrontend, result.Definition.Spec.Template.QueryFrontend)
+			assert.Equal(t, testCase.testTemplate.Gateway, result.Definition.Spec.Template.Gateway)
+			assert.Equal(t, testCase.testTemplate.IndexGateway, result.Definition.Spec.Template.IndexGateway)
+			assert.Equal(t, testCase.testTemplate.Ruler, result.Definition.Spec.Template.Ruler)
+		}
+	}
+}
+
 func buildValidLokiStackBuilder(apiClient *clients.Settings) *LokiStackBuilder {
-	triggerAuthBuilder := NewLokiStackBuilder(
+	lokiStackBuilder := NewLokiStackBuilder(
 		apiClient, defaultLokiStackName, defaultLokiStackNamespace)
 
-	return triggerAuthBuilder
+	return lokiStackBuilder
 }
 
 func buildInValidLokiStackBuilder(apiClient *clients.Settings) *LokiStackBuilder {
-	triggerAuthBuilder := NewLokiStackBuilder(
+	lokiStackBuilder := NewLokiStackBuilder(
 		apiClient, "", defaultLokiStackNamespace)
 
-	return triggerAuthBuilder
+	return lokiStackBuilder
 }
 
 func buildLokiStackClientWithDummyObject() *clients.Settings {
