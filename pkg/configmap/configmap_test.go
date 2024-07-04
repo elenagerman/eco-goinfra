@@ -1,7 +1,6 @@
 package configmap
 
 import (
-	"errors"
 	"testing"
 
 	"github.com/openshift-kni/eco-goinfra/pkg/clients"
@@ -196,20 +195,34 @@ func TestDelete(t *testing.T) {
 	}
 }
 
-func TestWithOptions(t *testing.T) {
-	testBuilder := buildTestBuilderWithFakeObjects([]runtime.Object{})
+func TestUpdate(t *testing.T) {
+	testCases := []struct {
+		testCM        *Builder
+		testData      map[string]string
+		expectedError string
+	}{
+		{
+			testCM:        buildTestBuilderWithFakeObjects([]runtime.Object{}),
+			testData:      map[string]string{"key1": "value1", "key2": "value2"},
+			expectedError: "",
+		},
+		{
+			testCM:        nil,
+			testData:      map[string]string{"key1": "value1", "key2": "value2"},
+			expectedError: "error: received nil ConfigMap builder",
+		},
+	}
 
-	testBuilder.WithOptions(func(builder *Builder) (*Builder, error) {
-		return builder, nil
-	})
+	for _, testCase := range testCases {
+		testCase.testCM.WithData(testCase.testData)
+		_, err := testCase.testCM.Update()
 
-	assert.Equal(t, "", testBuilder.errorMsg)
-
-	testBuilder.WithOptions(func(builder *Builder) (*Builder, error) {
-		return builder, errors.New("error")
-	})
-
-	assert.Equal(t, "error", testBuilder.errorMsg)
+		if testCase.expectedError != "" {
+			assert.Equal(t, testCase.expectedError, err.Error())
+		} else {
+			assert.Equal(t, testCase.testData, testCase.testCM.Definition.Data)
+		}
+	}
 }
 
 func TestGetGVR(t *testing.T) {
