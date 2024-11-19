@@ -455,6 +455,75 @@ func TestWithToleration(t *testing.T) {
 	}
 }
 
+func TestWithAffinity(t *testing.T) {
+	testCases := []struct {
+		affinity       *corev1.Affinity
+		expectedErrMsg string
+	}{
+		{
+			affinity: &corev1.Affinity{
+				NodeAffinity: &corev1.NodeAffinity{
+					RequiredDuringSchedulingIgnoredDuringExecution: &corev1.NodeSelector{
+						NodeSelectorTerms: []corev1.NodeSelectorTerm{{
+							MatchExpressions: []corev1.NodeSelectorRequirement{
+								{
+									Key:      "kubernetes.io/hostname",
+									Operator: corev1.NodeSelectorOpIn,
+									Values:   []string{"worker-0", "worker-1"},
+								},
+							}},
+						},
+					},
+				},
+			},
+			expectedErrMsg: "",
+		},
+		{
+			affinity:       nil,
+			expectedErrMsg: "'affinity' parameter is empty",
+		},
+	}
+
+	for _, testCase := range testCases {
+		testBuilder := buildValidTestBuilder()
+
+		testBuilder.WithAffinity(testCase.affinity)
+		assert.Equal(t, testCase.expectedErrMsg, testBuilder.errorMsg)
+
+		if testCase.expectedErrMsg == "" {
+			assert.Equal(t, testCase.affinity.NodeAffinity,
+				testBuilder.Definition.Spec.Template.Spec.Affinity.NodeAffinity)
+		}
+	}
+}
+
+func TestWithHostNetwork(t *testing.T) {
+	testCases := []struct {
+		enableHostNetwork bool
+		expectedErrMsg    string
+	}{
+		{
+			enableHostNetwork: true,
+			expectedErrMsg:    "",
+		},
+		{
+			enableHostNetwork: false,
+			expectedErrMsg:    "",
+		},
+	}
+
+	for _, testCase := range testCases {
+		testBuilder := buildValidTestBuilder()
+
+		testBuilder.WithHostNetwork(testCase.enableHostNetwork)
+		assert.Equal(t, testCase.expectedErrMsg, testBuilder.errorMsg)
+
+		if testCase.expectedErrMsg == "" {
+			assert.Equal(t, testCase.enableHostNetwork, testBuilder.Definition.Spec.Template.Spec.HostNetwork)
+		}
+	}
+}
+
 func TestCreate(t *testing.T) {
 	generateTestDeployment := func() *appsv1.Deployment {
 		return &appsv1.Deployment{
